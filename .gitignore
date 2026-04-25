@@ -1,0 +1,15 @@
+.docstring-ai-0.0.1.vsix
+.env
+env
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.gitignore
+.main.py

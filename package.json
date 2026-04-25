@@ -1,0 +1,22 @@
+{
+  "name": "docstring-ai",
+  "displayName": "Docstring AI",
+  "description": "Gera docstrings automaticamente com IA",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [
+    "onCommand:docstring.generate"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "docstring.generate",
+        "title": "Gerar Docstrings com IA"
+      }
+    ]
+  }
+}
