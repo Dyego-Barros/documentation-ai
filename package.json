@@ -1,7 +1,7 @@
 {
-  "name": "docstring-ai",
-  "displayName": "Docstring AI",
-  "description": "Gera docstrings e Dockerfiles automaticamente com IA",
+  "name": "Tools-AI",
+  "displayName": "Tools AI",
+  "description": "Gera documentação de classes e metodos em Python, C#, Java, JavaScript e Go e Dockerfiles e Docker Compose com auxilio de IA",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.85.0"
