@@ -1,4 +1,4 @@
-.docstring-ai-0.0.1.vsix
+docstring-ai-0.0.1.vsix
 .env
 env
 # Python-generated files
@@ -12,4 +12,10 @@ wheels/
 # Virtual environments
 .venv
 .gitignore
-.main.py
+main.py
+.python-versino
+python-versino
+uv.lock
+.vscode
+docstring-ai-0.0.1.vsix
+uv.lock
