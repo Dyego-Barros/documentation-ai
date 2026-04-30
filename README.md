@@ -58,7 +58,38 @@ Responsável por:
 
 📌 **Importante:**
 O agente de IA **não é um serviço separado** — ele faz parte da estrutura interna do MCP, não possuindo um container dedicado.
+---
 
+---
+
+### 🔹 4. Modelos (Modelos de LLM usados Context)
+
+* Neste projeto eu testei os seguintes modelos:
+
+  * Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf (Usado para rodar somente usando a CPU)
+  * qwen/qwen3-32b (Usando a API do Groq)
+  *
+
+
+📌 **Importante:**
+Teste e use com o modelo que prpeferir **não é obrigado a usar os mesmo modelos**.
+---
+
+## Variáveis de ambiente (.env)
+
+Crie um arquivo .env na raiz do projeto, adicione as seguintes variáveis.
+
+```
+API_KEY=
+USERNAME=
+PASSWORD=
+BASE_URL=
+DEFAULT_URL= 
+MODEL_DEFAULT= 
+GROQ_MODEL=
+
+```
+---
 ---
 
 ## 🐳 Exemplo de `docker-compose.yml`
@@ -77,9 +108,17 @@ services:
       - "8000:8000"
     volumes:
       - ./api:/app
+    environment:
+       USERNAME: ${USERNAME}
+       PASSWORD: ${PASSWORD}
     depends_on:
       - mcp-server
     restart: always
+    networks:
+      extension:
+        aliases:
+          - "api"
+    
 
   mcp-server:
     build: ./mcp
@@ -89,12 +128,22 @@ services:
     volumes:
       - ./mcp:/app
     environment:
-      - OPENAI_API_KEY=your_api_key_here
+       API_KEY: ${API_KEY}
+       BASE_URL: ${BASE_URL}
+       DEFAULT_URL: ${DEFAULT_URL}
+       MODEL_DEFAULT: ${MODEL_DEFAULT}
+       GROQ_MODEL: ${GROQ_MODEL}
     restart: always
+    networks:
+      extension:
+        aliases:
+          - "mcp-server"
+    
 
 networks:
-  default:
-    driver: bridge
+  extension:
+
+    
 ```
 
 ---
@@ -162,7 +211,7 @@ Após instalada:
 * ⏱️ Redução de tempo na escrita de documentação
 * 📚 Padronização automática
 * 🐳 Facilidade na criação de ambientes Docker
-* 🧠 Uso de IA para decisões mais inteligentes
+* 🧠 Uso de IA para agilizar
 
 ---
 
@@ -177,6 +226,6 @@ Após instalada:
 
 ## 👨‍💻 Autor
 
-Projeto desenvolvido para automação inteligente de documentação e containerização de aplicações modernas.
+Projeto desenvolvido, baseado em algumas necessidades básicas do meu dia a dia, fique a vontade para explorar e plugar os seus agentes de AI, melhorias e sugestões são bem vindas.
 
 ---
