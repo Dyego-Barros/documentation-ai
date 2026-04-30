@@ -72,7 +72,7 @@ O agente de IA **não é um serviço separado** — ele faz parte da estrutura i
 
 
 📌 **Importante:**
-Teste e use com o modelo que prpeferir **não é obrigado a usar os mesmo modelos**.
+Teste e use com o modelo que preferir **não é obrigado a usar os mesmo modelos**.
 ---
 
 ## Variáveis de ambiente (.env)
