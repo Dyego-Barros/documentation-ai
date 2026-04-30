@@ -6,7 +6,7 @@ import ast
 class dockerRepositorie:
     def call_mcp(self, context:dict) -> str:
             
-            MCP_URL = "http://localhost:9000/mcp"
+            MCP_URL = "http://mcp-server:9000/mcp"
 
             HEADERS = {
                 "Accept": "application/json, text/event-stream",
@@ -48,7 +48,7 @@ class dockerRepositorie:
     
     def call_mcp_compose(self, services:list) -> str:
             
-            MCP_URL = "http://localhost:9000/mcp"
+            MCP_URL = "http://mcp-server:9000/mcp"
 
             HEADERS = {
                 "Accept": "application/json, text/event-stream",
@@ -122,12 +122,21 @@ class dockerRepositorie:
         # Corrige encoding (se necessário)
         try:
             text = text.encode("latin1").decode("utf-8")
+            text = self.sanitize_response(text=text)
         except Exception:
             pass
 
         return text.strip()
 
+    
+    def sanitize_response(self,text: str) -> str:
+        # remove blocos <think>...</think>
+        text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
 
+        # remove caso venha só abertura
+        text = re.sub(r"<think>.*", "", text, flags=re.DOTALL)
+
+        return text.strip()
     # -----------------------------
     # AST PARSER (com FIX 2 🔥)
     # -----------------------------

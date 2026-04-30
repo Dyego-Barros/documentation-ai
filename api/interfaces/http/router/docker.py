@@ -20,6 +20,7 @@ def generateDockerFile(req: dockerModel):
     try:
         
         dados = docker.call_mcp(context=req.model_dump())
+        print(dados)
         return dados
         
     except Exception as e:

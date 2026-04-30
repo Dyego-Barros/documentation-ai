@@ -30,6 +30,7 @@ def generate_dockerfile(context:dict)->str:
         if context!= None:
             
             response = gerar_dockerfile(context=context)
+            print(f"Resposta da IA: {response}")
             return response
     except Exception as e:
         print(f"Erro ao gerar dockerfile :{e}")
@@ -40,6 +41,7 @@ def generate_compose(services:list)->str:
         if services!= None:
             
             response = gerar_compose(services=services)
+            print(f"Resposta da IA: {response}")
             return response
     except Exception as e:
         print(f"Erro ao gerar dockerfile :{e}")

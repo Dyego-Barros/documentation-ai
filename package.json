@@ -16,7 +16,7 @@
     "commands": [
       {
         "command": "docstring.generate",
-        "title": "Gerar Docstrings com IA"
+        "title": "Documentar código com IA"
       },
       {
         "command": "dockerfile.generate",

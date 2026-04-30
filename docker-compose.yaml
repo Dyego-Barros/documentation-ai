@@ -1,0 +1,47 @@
+version: "3.9"
+
+services:
+
+  api:
+    build: ./api
+    container_name: ai-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./api:/app
+    environment:
+       USERNAME: ${USERNAME}
+       PASSWORD: ${PASSWORD}
+    depends_on:
+      - mcp-server
+    restart: always
+    networks:
+      extension:
+        aliases:
+          - "api"
+    
+
+  mcp-server:
+    build: ./mcp
+    container_name: mcp-server
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./mcp:/app
+    environment:
+       API_KEY: ${API_KEY}
+       BASE_URL: ${BASE_URL}
+       DEFAULT_URL: ${DEFAULT_URL}
+       MODEL_DEFAULT: ${MODEL_DEFAULT}
+       GROQ_MODEL: ${GROQ_MODEL}
+    restart: always
+    networks:
+      extension:
+        aliases:
+          - "mcp-server"
+    
+
+networks:
+  extension:
+
+    
