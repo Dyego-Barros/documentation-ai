@@ -57,7 +57,7 @@ Responsável por:
   * Gera as respostas inteligentes
 
 📌 **Importante:**
-O agente de IA **não é um serviço separado** — ele faz parte da estrutura interna do MCP, não possuindo um container dedicado.
+* O agente de IA **não é um serviço separado** — ele faz parte da estrutura interna do MCP, não possuindo um container dedicado.
 ---
 
 ---
@@ -68,11 +68,12 @@ O agente de IA **não é um serviço separado** — ele faz parte da estrutura i
 
   * Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf (Usado para rodar somente usando a CPU)
   * qwen/qwen3-32b (Usando a API do Groq)
-  *
+  
 
 
 📌 **Importante:**
-Teste e use com o modelo que preferir **não é obrigado a usar os mesmo modelos**.
+
+* Teste e use com o modelo que preferir **não é obrigado a usar os mesmo modelos**.
 ---
 
 ## Variáveis de ambiente (.env)
