@@ -2,7 +2,7 @@
   "name": "Tools-AI",
   "displayName": "Tools AI",
   "description": "Gera documentação de classes e metodos em Python, C#, Java, JavaScript e Go e Dockerfiles e Docker Compose com auxilio de IA",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.85.0"
   },

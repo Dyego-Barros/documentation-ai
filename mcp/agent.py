@@ -8,6 +8,8 @@ load_dotenv()
 username = os.getenv("USERNAME")
 password = os.getenv("PASSWORD")
 
+
+
 credentials = base64.b64encode(f"{username}:{password}".encode()).decode()
 
 client = OpenAI(
@@ -27,15 +29,16 @@ def gerar_docstring_Python(code: str) -> str:
                 "content": f"""
                 Você deve é um engenheiro de Software Python Senior. 
                 Sua lingua é português do Brasil.
-                Sua responsabilidade é gerar docstring e comentarios para o código Python fornecido, incluindo classes e metodos e getters e setters, obedeça rigorosamente as regras definidas.
+                Sua responsabilidade é gerar docstring e comentarios para classes e metodos em  Python.
+                Obedeça rigorosamente as regras definidas.
 
                 REGRAS:
                 - Não reescreva funções
                 - Não duplique código
+                - Não remova codigo 
+                - Não exclua imports nem variaveis
                 - Não reescreva lógica
-                - Apenas adicione docstring correta
-                - Apenas adicione comentario correto
-                - Documente parâmetros e retorno quando existirem
+                - Apenas adicione docstring 
                 - Retorne o código completo com os comentários e docstrings adicionados
                 - Não explique nada
                 - Não use markdown
@@ -52,7 +55,8 @@ def gerar_docstring_Python(code: str) -> str:
         temperature=0.1,
         top_p=0.8
     )
-
+    #return response
+    print(response.choices[0].message.content.strip())
     return response.choices[0].message.content.strip()
 
 def gerar_docstring_csharp(code: str) -> str:
