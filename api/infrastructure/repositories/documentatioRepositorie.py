@@ -2,6 +2,7 @@ import requests
 import json
 import re
 import ast
+import time
 
 class documentationPython:
     # -----------------------------
@@ -43,7 +44,8 @@ class documentationPython:
                     "arguments": {"code": code, "language": language}
                 }
             },
-            headers={**HEADERS, "mcp-session-id": session_id}
+            headers={**HEADERS, "mcp-session-id": session_id},
+            timeout=340
         )
 
         return self.extrair_codigo(resp.text)
@@ -74,6 +76,7 @@ class documentationPython:
             pass
 
         return text.strip()
+    
 
     def sanitize_response(self,text: str) -> str:
         # remove blocos <think>...</think>
@@ -83,9 +86,11 @@ class documentationPython:
         text = re.sub(r"<think>.*", "", text, flags=re.DOTALL)
 
         return text.strip()
+    
     # -----------------------------
     # AST PARSER (com FIX 2 🔥)
     # -----------------------------
+
     def extrair_blocos(self, code: str):
         try:
             tree = ast.parse(code)
@@ -141,8 +146,10 @@ class documentationPython:
 
             return imports, variables, blocks
         except Exception as e:
-            print(e)
-            return [],[],[]
+            imports = []
+            blocks = []
+            variables = []
+            return imports, variables, blocks
 
 
     # -----------------------------
@@ -167,6 +174,7 @@ class documentationPython:
                 return code
             
             for chunk in chunks:
+                time.sleep(0.8)
                 result = self.call_mcp(chunk,language)
                 resultados.append(result)
 
@@ -185,12 +193,12 @@ class documentationPython:
                 return code
             
             chunks =[]
-            base_context= "\n".join(imports + variables)
+            base_context= "\n".join(imports + variables + [blocks[0].get('class_header','')])
             
             if base_context:
                 chunks.append(base_context)
             
-            for block in blocks:
+            for block in blocks:                
                 if len(block["methods"])> 0:
                     for func in block["methods"]:
                         chunk = func
@@ -214,6 +222,7 @@ class documentationPython:
         except Exception as e:
             print(e)
             return []
+        
         
     def extrair_imports(self, code: str, language: str):
         imports = []
@@ -358,6 +367,7 @@ class documentationPython:
                 chunks.append(code[i:i+2000])
         
         return chunks
+    
     def extrair_funcoes_soltas(self, code: str, language: str):
         """Extrai funções que não estão dentro de classes"""
         funcoes = []

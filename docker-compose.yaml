@@ -9,9 +9,9 @@ services:
       - "8000:8000"
     volumes:
       - ./api:/app
-    environment:
-       USERNAME: ${USERNAME}
-       PASSWORD: ${PASSWORD}
+    # environment:
+    #    USERNAME: ${USERNAME}
+    #    PASSWORD: ${PASSWORD}
     depends_on:
       - mcp-server
     restart: always
@@ -34,6 +34,8 @@ services:
        DEFAULT_URL: ${DEFAULT_URL}
        MODEL_DEFAULT: ${MODEL_DEFAULT}
        GROQ_MODEL: ${GROQ_MODEL}
+       USERNAME: ${USERNAME}
+       PASSWORD: ${PASSWORD}
     restart: always
     networks:
       extension:
