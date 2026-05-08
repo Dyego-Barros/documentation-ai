@@ -7,7 +7,7 @@ WORKDIR /app
 COPY . .
 
 RUN pip install --upgrade pip \
-&& pip install fastapi uvicorn pydantic requests
+&& pip install fastapi uvicorn pydantic requests httpx
 
 #Estage 2
 

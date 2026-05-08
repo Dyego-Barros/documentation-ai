@@ -18,7 +18,12 @@ function activate(context) {
                 return;
             }
 
-            const code = editor.document.getText();
+            const selection = editor.selection;
+
+            const code = selection.isEmpty
+                ? editor.document.getText()
+                : editor.document.getText(selection);
+
             const detectedLang = editor.document.languageId;
 
             const map = {
@@ -57,12 +62,14 @@ function activate(context) {
                 const data = await res.json();
 
                 const edit = new vscode.WorkspaceEdit();
-                const fullRange = new vscode.Range(
-                    editor.document.positionAt(0),
-                    editor.document.positionAt(code.length)
-                );
+                const range = selection.isEmpty
+                    ? new vscode.Range(
+                        editor.document.positionAt(0),
+                        editor.document.positionAt(editor.document.getText().length)
+                    )
+                    : selection;
 
-                edit.replace(editor.document.uri, fullRange, data.result);
+                edit.replace(editor.document.uri, range, data.result);
                 await vscode.workspace.applyEdit(edit);
 
                 vscode.window.showInformationMessage("Docstrings geradas!");

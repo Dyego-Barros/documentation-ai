@@ -20,7 +20,7 @@ docPythonrouter = APIRouter(prefix="/languages", tags=["Documentation"])
 
 
 @docPythonrouter.post(path="/docs")
-def docPython(req: DocRequest):
+async def docPython(req: DocRequest):
     """
     Endpoint para processar código-fonte e gerar documentação.
     
@@ -36,7 +36,7 @@ def docPython(req: DocRequest):
     try:
         language = req.language.lower()
         
-        result = doc.processar_codigo(req.code,language)
+        result = await doc.processar_codigo(req.code,language)
         print(result)
         return {"result": result}
     except Exception as e:

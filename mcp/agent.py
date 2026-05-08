@@ -1,4 +1,4 @@
-from openai import OpenAI
+from openai import OpenAI,AsyncOpenAI
 import base64
 import os
 from dotenv import load_dotenv
@@ -12,15 +12,15 @@ password = os.getenv("PASSWORD")
 
 credentials = base64.b64encode(f"{username}:{password}".encode()).decode()
 
-client = OpenAI(
+client = AsyncOpenAI(
     api_key=os.getenv("API_KEY"),
     base_url=os.getenv("BASE_URL"),
     
     #default_headers={"Authorization": f"Basic {credentials}"}
 )
 
-def gerar_docstring_Python(code: str) -> str:
-    response = client.chat.completions.create(
+async def gerar_docstring_Python(code: str) -> str:
+    response = await  client.chat.completions.create(
         #model="Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf",
         model=os.getenv("GROQ_MODEL"),
         messages=[
@@ -38,15 +38,16 @@ def gerar_docstring_Python(code: str) -> str:
                 - Não remova codigo 
                 - Não exclua imports nem variaveis
                 - Não reescreva lógica
-                - Apenas adicione docstring 
-                - Retorne o código completo com os comentários e docstrings adicionados
+                - Não adicione código novo
                 - Não explique nada
                 - Não use markdown
                 - Não inclua raciocínio interno.
-                - Não use <think>.
-                - Responda apenas com a resposta final.
-                - Return only the final answer. Do not include reasoning, thoughts, or <think> tags.
-
+                - Não use <tool_call> <tool_call>.
+                - Não use <think>  </think>.
+                - Apenas adicione docstring no formato PEP 257
+                - Documente parâmetros e retorno quando existirem
+                - Retorne o código completo com os comentários e docstrings adicionados
+               
                 Código:
                 {code}
                 """
@@ -56,11 +57,11 @@ def gerar_docstring_Python(code: str) -> str:
         top_p=0.8
     )
     #return response
-    print(response.choices[0].message.content.strip())
+    
     return response.choices[0].message.content.strip()
 
-def gerar_docstring_csharp(code: str) -> str:
-    response = client.chat.completions.create(
+async def gerar_docstring_csharp(code: str) -> str:
+    response =  await client.chat.completions.create(
         #model="Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf",
         model=os.getenv("GROQ_MODEL"),
         messages=[
@@ -96,8 +97,9 @@ def gerar_docstring_csharp(code: str) -> str:
     )
 
     return response.choices[0].message.content.strip()
-def gerar_docstring_java(code: str) -> str:
-    response = client.chat.completions.create(
+
+async def gerar_docstring_java(code: str) -> str:
+    response = await client.chat.completions.create(
         #model="Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf",
          model=os.getenv("GROQ_MODEL"),
         messages=[
@@ -132,8 +134,9 @@ def gerar_docstring_java(code: str) -> str:
     )
 
     return response.choices[0].message.content.strip()
-def gerar_docstring_javascript(code: str) -> str:
-    response = client.chat.completions.create(
+
+async def gerar_docstring_javascript(code: str) -> str:
+    response = await client.chat.completions.create(
         #model="Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf",
          model=os.getenv("GROQ_MODEL"),
         messages=[
@@ -168,8 +171,8 @@ def gerar_docstring_javascript(code: str) -> str:
     )
 
     return response.choices[0].message.content.strip()
-def gerar_docstring_go(code: str) -> str:
-    response = client.chat.completions.create(
+async def gerar_docstring_go(code: str) -> str:
+    response =  await client.chat.completions.create(
         #model="Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf",
          model=os.getenv("GROQ_MODEL"),
         messages=[
@@ -206,8 +209,8 @@ def gerar_docstring_go(code: str) -> str:
     return response.choices[0].message.content.strip()
 
 
-def gerar_dockerfile(context: dict) -> str:
-    response = client.chat.completions.create(
+async def gerar_dockerfile(context: dict) -> str:
+    response = await client.chat.completions.create(
         #model="Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf",
          model=os.getenv("GROQ_MODEL"),
         messages=[
@@ -243,8 +246,8 @@ def gerar_dockerfile(context: dict) -> str:
     return response.choices[0].message.content.strip()
 
 
-def gerar_compose(services: list) -> str:
-    response = client.chat.completions.create(
+async def gerar_compose(services: list) -> str:
+    response =  await client.chat.completions.create(
         #model="Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf",
          model=os.getenv("GROQ_MODEL"),
         messages=[

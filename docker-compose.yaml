@@ -34,6 +34,8 @@ services:
        DEFAULT_URL: ${DEFAULT_URL}
        MODEL_DEFAULT: ${MODEL_DEFAULT}
        GROQ_MODEL: ${GROQ_MODEL}
+       USERNAME: ${USERNAME}
+       PASSWORD: ${PASSWORD}
     restart: always
     networks:
       extension:

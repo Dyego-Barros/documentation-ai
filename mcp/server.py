@@ -1,7 +1,17 @@
 from fastmcp import FastMCP
 from agent import *
 from pydantic import BaseModel
+import asyncio
+
+
 mcp = FastMCP("docstring-agent")
+
+app = mcp.http_app(
+    path="/mcp",
+    json_response=True,
+    stateless_http=True,
+    transport="http"
+)
 
 class dockerModel(BaseModel):
     """
@@ -15,10 +25,12 @@ class dockerModel(BaseModel):
     project_type: str
     framework: str | None
     files: dict
-    
+   
+async def run_in_thread(func,*args): 
+    return asyncio.to_thread(func, *args)
     
 @mcp.tool()
-def add_docstring(code: str,language:str) -> str:
+async def add_docstring(code: str,language:str) -> str:
     """
     Adiciona docstrings a funções e métodos no código-fonte, de acordo com a linguagem especificada.
 
@@ -43,11 +55,12 @@ def add_docstring(code: str,language:str) -> str:
 
     if language not in funcs:
         raise ValueError("Linguagem não suportada")
-    print(funcs[language](code))
-    return funcs[language](code)
+    result = await funcs[language](code)
+    print(result)
+    return result
 
 @mcp.tool()
-def generate_dockerfile(context:dict)->str:
+async def generate_dockerfile(context:dict)->str:
     """
     Gera um Dockerfile com base no contexto fornecido.
 
@@ -63,14 +76,14 @@ def generate_dockerfile(context:dict)->str:
     try:
         if context!= None:
             
-            response = gerar_dockerfile(context=context)
+            response = await gerar_dockerfile(context)
             print(f"Resposta da IA: {response}")
             return response
     except Exception as e:
         print(f"Erro ao gerar dockerfile :{e}")
         
 @mcp.tool()
-def generate_compose(services:list)->str:
+async def generate_compose(services:list)->str:
     """
     Gera um arquivo docker-compose.yml com base na lista de serviços fornecida.
 
@@ -86,15 +99,19 @@ def generate_compose(services:list)->str:
     try:
         if services!= None:
             
-            response = gerar_compose(services=services)
+            response = await gerar_compose(services)
             print(f"Resposta da IA: {response}")
             return response
     except Exception as e:
         print(f"Erro ao gerar dockerfile :{e}")
 
 if __name__ == "__main__":
-    mcp.run(
-        transport="http",
+    import uvicorn as uv
+    uv.run(
+        "server:app",
         host="0.0.0.0",
-        port=9000
+        port=9000,
+        reload=False,
+        workers=2
     )
+   

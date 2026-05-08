@@ -2,102 +2,176 @@ import requests
 import json
 import re
 import ast
+import httpx
+
 
 class documentationPython:
-    # -----------------------------
-    # MCP CALL (sem mudança)
-    # -----------------------------
-    def call_mcp(self, code: str, language: str) -> str:
+    """Classe base para geração de documentação em Python.
+    
+    Responsável por adicionar docstrings e comentários
+    seguindo as diretrizes PEP 257. Utilizada por engenheiros
+    de software senior para documentação de código.
+    """
+    
+    def __init__(self):
+        """Inicializa uma instância da classe com um cliente HTTP assíncrono.
         
-        MCP_URL = "http://localhost:9000/mcp"
+        O cliente é configurado com um tempo limite de 120 segundos para requisições assíncronas.
+        """
+        self.client = httpx.AsyncClient(timeout=120)
 
+        
+    async def call_mcp(self, code: str, language: str) -> str:
+        """
+        Call the MCP API to add a docstring to the given code.
+
+        Parameters:
+        code (str): The code to add a docstring to.
+        language (str): The language of the code.
+
+        Returns:
+        str: The sanitized response from the API.
+
+        """
+        MCP_URL = 'http://localhost:9000/mcp'
+        
         HEADERS = {
-            "Accept": "application/json, text/event-stream",
-            "Content-Type": "application/json"
+            'Accept': 'application/json', 
+            'Content-Type': 'application/json'
         }
         
-        init = requests.post(MCP_URL, json={
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": {
-                    "name": "api",
-                    "version": "1.0"
-                }
-            }
-        }, headers=HEADERS)
-
-        session_id = init.headers.get("mcp-session-id")
-
-        resp = requests.post(
-            MCP_URL,
+        resp = await self.client.post(
+            MCP_URL, 
             json={
-                "jsonrpc": "2.0",
-                "id": 2,
-                "method": "tools/call",
-                "params": {
-                    "name": "add_docstring",
-                    "arguments": {"code": code, "language": language}
+                'jsonrpc': '2.0', 
+                'id': 2, 
+                'method': 'tools/call', 
+                'params': {
+                    'name': 'add_docstring', 
+                    'arguments': {
+                        'code': code, 
+                        'language': language
+                    }
                 }
-            },
-            headers={**HEADERS, "mcp-session-id": session_id}
+            }, 
+            headers=HEADERS
         )
-
-        return self.extrair_codigo(resp.text)
+        
+        result = json.loads(resp.text)
+        result = result.get('result').get('content')[0].get('text')
+        return self.sanitize_response(result)
+    
 
 
     # -----------------------------
     # RESPONSE PARSER (limpo)
     # -----------------------------
+    
+
     def extrair_codigo(self, resp_text):
+        """
+    Extrai o texto de uma resposta JSON que contém dados em formato de código.
+
+    Args:
+        resp_text (str): Texto da resposta JSON.
+
+    Returns:
+        str: Texto limpo e formatado.
+    """
         data_lines = []
-
         for line in resp_text.splitlines():
-            if line.startswith("data:"):
-                data_lines.append(line.replace("data: ", ""))
-
-        full_data = "".join(data_lines)
+            if line.startswith('data:'):
+                data_lines.append(line.replace('data: ', ''))
+        full_data = ''.join(data_lines)
         parsed = json.loads(full_data)
-
-        text = parsed["result"]["content"][0]["text"]
-
-        text = re.sub(r"```[\w]*\n?", "", text)
-        text = re.sub(r"```", "", text)
-
+        text = parsed['result']['content'][0]['text']
+        text = re.sub('[\\w]*\\n?', '', text)
+        text = re.sub('', '', text)
         try:
-            text = text.encode("latin1").decode("utf-8")
+            text = text.encode('latin1').decode('utf-8')
             text = self.sanitize_response(text=text)
         except:
             pass
-
         return text.strip()
 
-    def sanitize_response(self,text: str) -> str:
-        # remove blocos <think>...</think>
+    def sanitize_response(self, text: str) -> str:
+        """Limpa o texto removendo blocos específicos e formatação indesejada.
+
+        Args:
+            text (str): Texto a ser sanitizado.
+
+        Returns:
+            str: Texto limpo após a remoção de blocos 〖...〗, aberturas soltas e blocos de markdown.
+        """
+        # remove blocos 〖...〗
         text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
 
         # remove caso venha só abertura
         text = re.sub(r"<think>.*", "", text, flags=re.DOTALL)
+        # remove markdown ``
+        text = re.sub(r"ˆ```python.*?","",text,flags=re.DOTALL)
+        text = re.sub(r"^```python(?:\w+)?\n|\n```$", "", text,flags=re.DOTALL)
+        text = text.replace("```","")
+        text = text.replace("```python","")
 
-        return text.strip()
+        return text.strip()    
+    
+    def formatar_codigo(self, code: list) -> str:
+        """
+        Formata uma lista de linhas de código, indentando linhas que não são definições de funções.
+        
+        Linhas contendo 'def' ou 'async def' são mantidas sem indentação, enquanto outras linhas
+        são indentadas com um caractere '\t'. Em caso de exceção, imprime o erro e retorna o código original.
+
+        Args:
+            code: Lista de strings representando linhas de código a serem formatadas.
+
+        Returns:
+            str: Código formatado com indentação aplicada ou código original em caso de erro.
+        """
+        try: 
+            # Junta a lista de linhas em uma única string com quebras de linha
+            code = "\n".join(code)
+            code_formated = ""
+            # Itera sobre cada linha do código
+            for line in code.splitlines():
+                # Mantém linhas com definições de funções sem indentação
+                if "async def" in line or "def" in line:
+                        code_formated += line + "\n"
+                else:
+                    # Indenta outras linhas com '\t'
+                    code_formated += "\t" + line + "\n"
+            return code_formated
+        except Exception as e:
+            # Em caso de erro, imprime a exceção e retorna o código original
+            print(e)
+            return code
+
     # -----------------------------
     # AST PARSER (com FIX 2 🔥)
     # -----------------------------
+
     def extrair_blocos(self, code: str):
+        """Extrai blocos de código, imports e variáveis de uma string de código Python.
+        
+        Args:
+            code (str): Código fonte Python a ser analisado.
+            
+        Returns:
+            tuple: Tupla contendo três listas:
+                - imports: Lista de strings com declarações de importação
+                - variables: Lista de strings com declarações de variáveis
+                - blocks: Lista de dicionários com informações sobre classes e funções
+        """
         try:
             tree = ast.parse(code)
 
             imports = []
             blocks = []
             variables = []
-        
-
-            for node in tree.body:
-                #Captura variaveis
             
+            for node in tree.body:
+                # Captura variáveis e atribuições
                 # ✅ CAPTURA IMPORTS
                 if isinstance(node, (ast.Import, ast.ImportFrom)):
                     imports.append(ast.get_source_segment(code, node))
@@ -112,11 +186,11 @@ class documentationPython:
 
                     decoratos = [ast.get_source_segment(code,d) for d in node.decorator_list]
                     for item in node.body:
-                        if isinstance(item, ast.FunctionDef):
+                        if isinstance(item, (ast.FunctionDef,ast.AsyncFunctionDef)):
                             method_code = ast.get_source_segment(code, item)
                             if method_code:
                                 methods.append(method_code)
-                        
+                            
                     blocks.append({
                         "type": "class",
                         "class_header": class_header,
@@ -124,14 +198,13 @@ class documentationPython:
                         "methods": methods
                     })
 
-                elif isinstance(node, ast.FunctionDef):
+                elif isinstance(node, (ast.FunctionDef,ast.AsyncFunctionDef)):
                     methods=[]
                     decorators = [ast.get_source_segment(code,d) for d in node.decorator_list]
-                    for item in node.body:
-                        if isinstance(item,ast.FunctionDef):
-                            method_code = ast.get_source_segment(code,item)
-                            if method_code:
-                                methods.append(method_code)
+                    
+                    method_code = ast.get_source_segment(code,node)
+                    if method_code:
+                        methods.append(method_code)
                                 
                     blocks.append({
                         "type": "function",
@@ -148,7 +221,20 @@ class documentationPython:
     # -----------------------------
     # PROCESSAMENTO INTELIGENTE (FIX 2 AQUI 🔥)
     # -----------------------------
-    def processar_codigo(self, code: str, language: str) -> str:
+    
+    async def processar_codigo(self, code: str, language: str) -> str:
+        """Processa código fonte chamando MCP para documentação.
+        
+        Divide o código em partes e aplica documentação automática.
+        Trata erros de sintaxe e retorna código original em falhas.
+        
+        Args:
+            code: Código fonte a ser documentado
+            language: Linguagem de programação do código
+            
+        Returns:
+            Código documentado ou original em caso de falha
+        """
         try:
             try:
                 if language.lower() != "python":
@@ -157,8 +243,8 @@ class documentationPython:
                 else:
                     chunks = self.dividir_codigo(code)
             except SyntaxError as e:
-                print(e)
-                return self.call_mcp(code, language)
+                result = await self.call_mcp(code, language)
+                return result
 
             resultados = []
             
@@ -167,25 +253,40 @@ class documentationPython:
                 return code
             
             for chunk in chunks:
-                result = self.call_mcp(chunk,language)
+                result =  await self.call_mcp(chunk,language)
                 resultados.append(result)
-
-            return "\n\n".join(resultados)
+                
+            
+            
+            result = self.formatar_codigo(resultados)
+                    
+            return result
         except Exception as e:
             print(e)
-            return code
+            return code    
+    
         
     #Arquivos muito grande são divididos em pequenos pedacos para melhorar trade-offs
+    	
     def dividir_codigo(self, code: str, max_chars=4000):
+        """Divide o código fonte em partes menores com base no limite de caracteres.
+
+        Extrai imports, variáveis e blocos de código, e os segmenta em partes
+        que não excedam o limite máximo de caracteres especificado.
+
+        Args:
+            code: Código fonte a ser dividido.
+            max_chars: Número máximo de caracteres por parte (padrão: 4000).
+
+        Returns:
+            Lista contendo as partes do código segmentadas.
+            Retorna lista vazia em caso de exceção.
+        """
         try:
             imports,variables, blocks = self.extrair_blocos(code=code)
             
-            if len(imports + variables +blocks) == 0:
-                print("Não foi possivel extrair blocos do codigo fornecido!")
-                return code
-            
             chunks =[]
-            base_context= "\n".join(imports + variables)
+            base_context= "\n".join(imports + variables+[blocks[0].get('class_header','')])
             
             if base_context:
                 chunks.append(base_context)
@@ -214,37 +315,67 @@ class documentationPython:
         except Exception as e:
             print(e)
             return []
+
         
     def extrair_imports(self, code: str, language: str):
+        """
+        Extrai linhas de importação de código fonte com base na linguagem especificada.
+
+        Args:
+            code (str): Código fonte a ser analisado.
+            language (str): Linguagem de programação (javascript, java, csharp, go).
+
+        Returns:
+            list: Lista de strings contendo as linhas de importação encontradas.
+        """
         imports = []
 
         for line in code.splitlines():
             l = line.strip()
 
             if language == "javascript":
-                if l.startswith("import ") or l.startswith("const ") and "require(" in l:
+                # Verifica importações ES6 (import ...) e CommonJS (const ... = require())
+                if l.startswith("import ") or (l.startswith("const ") and "require(" in l):
                     imports.append(line)
 
             elif language == "java":
+                # Captura declarações de import e package
                 if l.startswith("import ") or l.startswith("package "):
                     imports.append(line)
 
             elif language == "csharp":
+                # Identifica diretivas using para namespaces
                 if l.startswith("using "):
                     imports.append(line)
 
             elif language == "go":
-                # Go pode ter import block ou import único
+                # Go pode ter blocos de import ou declarações únicas
+                # Captura diretivas import e declarações de package
                 if l.startswith("import") or l.startswith("package "):
                     imports.append(line)
 
         return imports
 
     def extrair_globais(self, code: str):
+        """ Extrai declarações de variáveis globais do código fornecido.
+
+        Analisa o código linha a linha para identificar declarações de variáveis
+        no escopo global, considerando linguagens como Go, JavaScript e outras
+        onde variáveis podem ser declaradas com 'var', 'const', 'let', ou atribuídas
+        com '=' fora de blocos.
+
+        Parâmetros:
+        code (str): Código-fonte a ser analisado.
+
+        Retorna:
+        list: Lista de strings contendo as linhas que representam declarações
+                de variáveis globais.
+        """
         globais = []
         nivel = 0
 
         for line in code.splitlines():
+            
             stripped = line.strip()
 
             # atualiza profundidade

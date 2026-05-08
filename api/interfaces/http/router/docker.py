@@ -29,7 +29,7 @@ class composeModel(BaseModel):
 dockerRouter = APIRouter(prefix="/generate", tags=["Generate"])
 
 @dockerRouter.post(path="/dockerfile")
-def generateDockerFile(req: dockerModel):
+async def generateDockerFile(req: dockerModel):
     """
     Gera um Dockerfile com base nos parâmetros fornecidos.
     
@@ -41,7 +41,7 @@ def generateDockerFile(req: dockerModel):
     """
     try:
         # Chama o repositório para gerar o Dockerfile
-        dados = docker.call_mcp(context=req.model_dump())
+        dados = await docker.call_mcp(context=req.model_dump())
         return dados
         
     except Exception as e:
@@ -49,7 +49,7 @@ def generateDockerFile(req: dockerModel):
         return {"error": str(e)}
     
 @dockerRouter.post(path="/compose")
-def generateCompose(req:composeModel):
+async def generateCompose(req:composeModel):
     """
     Gera um arquivo docker-compose.yml com base nos serviços fornecidos.
     
@@ -61,7 +61,7 @@ def generateCompose(req:composeModel):
     """
     try:
         # Chama o repositório para gerar o Docker Compose
-        dados = docker.call_mcp_compose(services=req.model_dump())
+        dados = await docker.call_mcp_compose(services=req.model_dump())
         return dados
         
     except Exception as e:
