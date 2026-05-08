@@ -173,7 +173,7 @@ docker-compose up --build
 1. Gere o pacote:
 
 ```bash id="19h1yr"
-vsce package
+npx vsce package --allow-missing-repository --no-yarn --no-dependencies
 ```
 
 2. No VSCode:

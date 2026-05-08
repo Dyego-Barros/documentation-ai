@@ -33,7 +33,7 @@ class documentationPython:
         str: The sanitized response from the API.
 
         """
-        MCP_URL = 'http://localhost:9000/mcp'
+        MCP_URL = 'http://mcp-server:9000/mcp'
         
         HEADERS = {
             'Accept': 'application/json', 
@@ -95,58 +95,50 @@ class documentationPython:
         return text.strip()
 
     def sanitize_response(self, text: str) -> str:
-        """Limpa o texto removendo blocos específicos e formatação indesejada.
-
-        Args:
-            text (str): Texto a ser sanitizado.
-
-        Returns:
-            str: Texto limpo após a remoção de blocos 〖...〗, aberturas soltas e blocos de markdown.
         """
-        # remove blocos 〖...〗
-        text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+        Limpa a resposta da IA removendo tags de pensamento e delimitadores de markdown.
+        """
+        # 1. Remove blocos de pensamento <think>...</think> completos ou inacabados
+        text = re.sub(r"<think>.*?(?:</think>|\$)", "", text, flags=re.DOTALL)
 
-        # remove caso venha só abertura
-        text = re.sub(r"<think>.*", "", text, flags=re.DOTALL)
-        # remove markdown ``
-        text = re.sub(r"ˆ```python.*?","",text,flags=re.DOTALL)
-        text = re.sub(r"^```python(?:\w+)?\n|\n```$", "", text,flags=re.DOTALL)
-        text = text.replace("```","")
-        text = text.replace("```python","")
+        # 2. Remove blocos de código Markdown (ex: ```python ... ``` ou apenas ```)
+        # Este regex remove a abertura (```python) e o fechamento (```)
+        text = re.sub(r"```python(?:\w+)?\n?```", "", text)
+        
+        # 3. Caso ainda sobrem crases triplas isoladas
+        text = text.replace("```", "")
+        text = text.replace("```python", "")
 
-        return text.strip()    
+        return text.strip()
     
     def formatar_codigo(self, code: list) -> str:
         """
-        Formata uma lista de linhas de código, indentando linhas que não são definições de funções.
-        
-        Linhas contendo 'def' ou 'async def' são mantidas sem indentação, enquanto outras linhas
-        são indentadas com um caractere '\t'. Em caso de exceção, imprime o erro e retorna o código original.
-
-        Args:
-            code: Lista de strings representando linhas de código a serem formatadas.
-
-        Returns:
-            str: Código formatado com indentação aplicada ou código original em caso de erro.
+        Formata uma lista de strings (linhas de código) aplicando uma indentação 
+        base àquilo que não for uma definição de função.
         """
-        try: 
-            # Junta a lista de linhas em uma única string com quebras de linha
-            code = "\n".join(code)
-            code_formated = ""
-            # Itera sobre cada linha do código
-            for line in code.splitlines():
-                # Mantém linhas com definições de funções sem indentação
-                if "async def" in line or "def" in line:
-                        code_formated += line + "\n"
-                else:
-                    # Indenta outras linhas com '\t'
-                    code_formated += "\t" + line + "\n"
-            return code_formated
-        except Exception as e:
-            # Em caso de erro, imprime a exceção e retorna o código original
-            print(e)
-            return code
+        if not code:
+            return ""
 
+        try:
+            lines_formated = []
+            for line in code:
+                # strip() remove espaços/tabs antigos nas extremidades para evitar duplicação
+                clean_line = line.strip()
+                
+                # Verifica se a linha é uma definição de função
+                if clean_line.startswith("def ") or clean_line.startswith("async def "):
+                    lines_formated.append(clean_line)
+                else:
+                    # Usa 4 espaços (padrão PEP 8) em vez de '\t'
+                    # Se a linha já tiver indentação original, o .strip() acima limpou. 
+                    # Se quiser manter a indentação interna original, remova o .strip().
+                    lines_formated.append("  " + line)
+
+            return "\n".join(lines_formated)
+
+        except Exception as e:
+            print(f"Erro ao formatar código: {e}")
+            return "\n".join(code)
     # -----------------------------
     # AST PARSER (com FIX 2 🔥)
     # -----------------------------
@@ -396,28 +388,41 @@ class documentationPython:
         return globais
 
     def extrair_classes(self, code: str):
+        """
+        Extrai blocos de código correspondentes a definições de classes ou structs.
+        
+        Este método percorre o código caractere por caractere, identificando blocos
+        delimitados por '{' e '}' que correspondem a definições de classes (como em C#,
+        Java, JavaScript) ou structs (como em Go).
+        
+        Args:
+            code (str): Código-fonte a ser analisado.
+        
+        Returns:
+            list: Lista de strings contendo os blocos de código extraídos.
+        """
         classes = []
         stack = []
         start = None
-        
+    
         for i, char in enumerate(code):
             if char == "{":
                 if not stack:
-                    # Pega a linha anterior (ou atual) onde está a definição da classe
+                # Pega a linha anterior (ou atual) onde está a definição da classe
                     # Procura desde a última quebra de linha até o { atual
                     last_newline = code.rfind('\n', 0, i)
                     if last_newline == -1:
                         last_newline = 0
                     prefix = code[last_newline:i].strip()
-                    
+    
                     # Verifica se é uma classe (C#, Java, JS) ou struct (GO)
                     if ("class " in prefix or "struct" in prefix) and (
-                        "class " in prefix.split()[0] if prefix.split() else False or 
+                        "class " in prefix.split()[0] if prefix.split() else False or
                         "struct" in prefix
                     ):
                         start = i
                 stack.append("{")
-            
+    
             elif char == "}":
                 if stack:
                     stack.pop()
@@ -426,43 +431,72 @@ class documentationPython:
                         if class_code:
                             classes.append(class_code)
                         start = None
-        
+    
         return classes
 
+
+    	
     def extrair_metodos(self, classe_code: str):
-        metodos = []
-        stack = []
-        start = None
-
-        for i, char in enumerate(classe_code):
-            if char == "{":
-                if not stack:
-                    linha = classe_code[:i].split("\n")[-1]
-                    if "(" in linha and ")" in linha:
-                        start = i
-                stack.append("{")
-
-            elif char == "}":
-                if stack:
-                    stack.pop()
-                    if not stack and start is not None:
-                        metodos.append(classe_code[start:i+1])
-                        start = None
+            """Extrai métodos de uma string contendo código de classe.
         
-        # Se não encontrou métodos com {}, procura por métodos expression-bodied (=>)
-        if not metodos:
-            linhas = classe_code.split('\n')
-            for linha in linhas:
-                linha = linha.strip()
-                # Verifica se é uma linha de método
-                if any(mod in linha for mod in ['public ', 'private ', 'protected ', 'internal ']):
-                    if '(' in linha and ')' in linha and '=>' in linha:
-                        metodos.append(linha)
+            Percorre o código caractere por caractere para identificar blocos de métodos
+            delimitados por chaves `{}`. Caso não encontre métodos com blocos, procura por
+            métodos expression-bodied usando a notação `=>`.
         
-        return metodos
+            Args:
+                classe_code (str): Código-fonte da classe como string.
+        
+            Returns:
+                list: Lista de strings contendo os métodos extraídos.
+            """
+            metodos = []
+            stack = []
+            start = None
+        
+            for i, char in enumerate(classe_code):
+                if char == "{":
+                    if not stack:
+                        linha = classe_code[:i].split("\n")[-1]
+                        if "(" in linha and ")" in linha:
+                            start = i
+                    stack.append("{")
+        
+                elif char == "}":
+                    if stack:
+                        stack.pop()
+                        if not stack and start is not None:
+                            metodos.append(classe_code[start:i+1])
+                            start = None
+                
+            # Se não encontrou métodos com {}, procura por métodos expression-bodied (=>)
+            if not metodos:
+                linhas = classe_code.split('\n')
+                for linha in linhas:
+                    linha = linha.strip()
+                    # Verifica se é uma linha de método
+                    if any(mod in linha for mod in ['public ', 'private ', 'protected ', 'internal ']):
+                        if '(' in linha and ')' in linha and '=>' in linha:
+                            metodos.append(linha)
+                
+            return metodos
+
 
 
     def dividir_codigo_generico(self, code: str, language: str):
+        """
+        Divide o código fonte em partes menores, priorizando a extração de classes e métodos.
+
+        Este método extrai imports, variáveis globais, classes e métodos do código fornecido,
+        e os reorganiza em blocos individuais. Caso não sejam encontrados métodos ou classes,
+        o código é dividido em partes menores com base em um limite de caracteres.
+
+        Parâmetros:
+            code (str): Código fonte a ser dividido.
+            language (str): Linguagem de programação do código.
+
+        Retorna:
+            list: Lista de strings, onde cada string representa um bloco ou chunk do código.
+        """
         imports = self.extrair_imports(code, language)
         globais = self.extrair_globais(code)
 
@@ -489,29 +523,39 @@ class documentationPython:
                 chunks.append(code[i:i+2000])
         
         return chunks
+
+
     def extrair_funcoes_soltas(self, code: str, language: str):
-        """Extrai funções que não estão dentro de classes"""
-        funcoes = []
+            """Extrai funções que não estão dentro de classes
         
-        import re
+            Args:
+                code (str): Código-fonte a ser analisado.
+                language (str): Linguagem de programação do código-fonte. Ex: 'go', 'javascript'.
         
-        if language == "go":
-            # Go: func nome(params) retorno { corpo }
-            pattern = r'func\s+\w+\s*\([^)]*\)\s*\{[^}]*\}'
-            matches = re.finditer(pattern, code, re.DOTALL)
-            for match in matches:
-                funcoes.append(match.group())
-        
-        elif language == "javascript":
-            # JS: function nome(params) { corpo } ou const nome = () => { corpo }
-            patterns = [
-                r'function\s+\w+\s*\([^)]*\)\s*\{[^}]*\}',
-                r'const\s+\w+\s*=\s*\([^)]*\)\s*=>\s*\{[^}]*\}',
-                r'let\s+\w+\s*=\s*\([^)]*\)\s*=>\s*\{[^}]*\}'
-            ]
-            for pattern in patterns:
+            Returns:
+                list: Lista de strings contendo as funções extraídas.
+            """
+            funcoes = []
+            
+            import re
+            
+            if language == "go":
+                # Go: func nome(params) retorno { corpo }
+                pattern = r'func\s+\w+\s*\([^)]*\)\s*\{[^}]*\}'
                 matches = re.finditer(pattern, code, re.DOTALL)
                 for match in matches:
                     funcoes.append(match.group())
-        
-        return funcoes
+            
+            elif language == "javascript":
+                # JS: function nome(params) { corpo } ou const nome = () => { corpo }
+                patterns = [
+                    r'function\s+\w+\s*\([^)]*\)\s*\{[^}]*\}',
+                    r'const\s+\w+\s*=\s*\([^)]*\)\s*=>\s*\{[^}]*\}',
+                    r'let\s+\w+\s*=\s*\([^)]*\)\s*=>\s*\{[^}]*\}'
+                ]
+                for pattern in patterns:
+                    matches = re.finditer(pattern, code, re.DOTALL)
+                    for match in matches:
+                        funcoes.append(match.group())
+            
+            return funcoes

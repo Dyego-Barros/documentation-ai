@@ -4,81 +4,141 @@ const path = require("path");
 
 function activate(context) {
 
-    // =========================
-    // 📌 DOCSTRING
-    // =========================
-    let docCommand = vscode.commands.registerCommand(
-        "docstring.generate",
-        async function () {
+// =========================
+// 📌 DOCSTRING - VERSÃO ROBUSTA
+// =========================
+let docCommand = vscode.commands.registerTextEditorCommand(
+    "docstring.generate",
+    async function (editor) {
 
-            const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showErrorMessage("Abra um arquivo primeiro");
+            return;
+        }
 
-            if (!editor) {
-                vscode.window.showErrorMessage("Abra um arquivo primeiro");
+        // 🔥 FORÇA atualização do editor antes de ler seleção
+        await new Promise(resolve => setTimeout(resolve, 10));
+        
+        // Pega seleção ATUAL de forma mais direta
+        const activeSelection = editor.selection;
+        
+        let code = "";
+        let range;
+        
+        // Método mais direto: tenta pegar texto da seleção atual
+        let selectedText = "";
+        try {
+            selectedText = editor.document.getText(activeSelection);
+        } catch(e) {
+            console.log("Erro ao pegar texto:", e);
+        }
+        
+        // Verifica se tem seleção válida
+        const hasValidSelection = activeSelection && 
+                                 !activeSelection.isEmpty && 
+                                 selectedText && 
+                                 selectedText.trim().length > 0;
+        
+        console.log("=== DEBUG PRODUÇÃO ===");
+        console.log("activeSelection.isEmpty:", activeSelection?.isEmpty);
+        console.log("selectedText length:", selectedText?.length);
+        console.log("hasValidSelection:", hasValidSelection);
+        console.log("Platform:", process.platform);
+        
+        if (hasValidSelection) {
+            // Usa a seleção atual
+            code = selectedText;
+            range = activeSelection;
+            vscode.window.showInformationMessage(`✅ Gerando docstring para seleção (${code.length} caracteres)`);
+            console.log("✅ Usando seleção atual, tamanho:", code.length);
+        } else {
+            // Fallback: pergunta ao usuário
+            const useFullFile = await vscode.window.showWarningMessage(
+                "Nenhum código selecionado. Deseja gerar docstring para o arquivo inteiro?",
+                "Sim", "Não", "Cancelar"
+            );
+            
+            if (useFullFile !== "Sim") {
                 return;
             }
+            
+            code = editor.document.getText();
+            range = new vscode.Range(
+                editor.document.positionAt(0),
+                editor.document.positionAt(editor.document.getText().length)
+            );
+            console.log("📄 Usando arquivo inteiro");
+        }
 
-            const selection = editor.selection;
+        const detectedLang = editor.document.languageId;
 
-            const code = selection.isEmpty
-                ? editor.document.getText()
-                : editor.document.getText(selection);
+        const map = {
+            python: "python",
+            javascript: "javascript",
+            typescript: "javascript",
+            java: "java",
+            csharp: "csharp",
+            go: "go"
+        };
 
-            const detectedLang = editor.document.languageId;
+        let language = map[detectedLang];
 
-            const map = {
-                python: "python",
-                javascript: "javascript",
-                typescript: "javascript",
-                java: "java",
-                csharp: "csharp",
-                go: "go"
-            };
+        if (!language) {
+            language = await vscode.window.showQuickPick(
+                ["python", "javascript", "java", "csharp", "go"],
+                { placeHolder: "Escolha a linguagem" }
+            );
+        }
 
-            let language = map[detectedLang];
+        if (!language) return;
 
-            if (!language) {
-                language = await vscode.window.showQuickPick(
-                    ["python", "javascript", "java", "csharp", "go"],
-                    { placeHolder: "Escolha a linguagem" }
-                );
-            }
+        vscode.window.showInformationMessage(
+            `Gerando docstrings para ${language}...`
+        );
 
-            if (!language) return;
+        try {
 
-            vscode.window.showInformationMessage(
-                `Gerando docstrings para ${language}...`
+            const res = await fetch(
+                "http://localhost:8000/languages/docs",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        code,
+                        language
+                    })
+                }
             );
 
-            try {
-                const res = await fetch("http://localhost:8000/languages/docs", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ code, language })
-                });
-
-                if (!res.ok) throw new Error(`Erro HTTP: ${res.status}`);
-
-                const data = await res.json();
-
-                const edit = new vscode.WorkspaceEdit();
-                const range = selection.isEmpty
-                    ? new vscode.Range(
-                        editor.document.positionAt(0),
-                        editor.document.positionAt(editor.document.getText().length)
-                    )
-                    : selection;
-
-                edit.replace(editor.document.uri, range, data.result);
-                await vscode.workspace.applyEdit(edit);
-
-                vscode.window.showInformationMessage("Docstrings geradas!");
-
-            } catch (err) {
-                vscode.window.showErrorMessage("Erro: " + err.message);
+            if (!res.ok) {
+                throw new Error(`Erro HTTP: ${res.status}`);
             }
+
+            const data = await res.json();
+
+            const edit = new vscode.WorkspaceEdit();
+
+            edit.replace(
+                editor.document.uri,
+                range,
+                data.result
+            );
+
+            await vscode.workspace.applyEdit(edit);
+
+            vscode.window.showInformationMessage(
+                "✅ Docstrings geradas com sucesso!"
+            );
+
+        } catch (err) {
+            vscode.window.showErrorMessage(
+                "Erro: " + err.message
+            );
         }
-    );
+    }
+);
 
     // =========================
     // 🐳 DOCKER + COMPOSE

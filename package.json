@@ -22,6 +22,15 @@
         "command": "dockerfile.generate",
         "title": "Gerar Dockerfile + Compose com IA"
       }
-    ]
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "docstring.generate",
+          "when": "editorHasSelection",
+          "group": "navigation"
+        }
+      ]
+    }
   }
 }
