@@ -96,21 +96,31 @@ class documentationPython:
 
     def sanitize_response(self, text: str) -> str:
         """
-        Limpa a resposta da IA removendo tags de pensamento e delimitadores de markdown.
+        Limpa a resposta da IA removendo tags de pensamento, delimitadores de markdown
+        e rótulos de linguagem soltos no texto.
         """
-        # 1. Remove blocos de pensamento <think>...</think> completos ou inacabados
+        # 1. Remove blocos de pensamento <think>...</think> completos ou incompletos
         text = re.sub(r"<think>.*?(?:</think>|\$)", "", text, flags=re.DOTALL)
 
-        # 2. Remove blocos de código Markdown (ex: ```python ... ``` ou apenas ```)
-        # Este regex remove a abertura (```python) e o fechamento (```)
-        text = re.sub(r"```python(?:\w+)?\n?```", "", text)
-        
-        # 3. Caso ainda sobrem crases triplas isoladas
-        text = text.replace("```", "")
-        text = text.replace("```python", "")
+        # 2. Remove blocos de código Markdown completos (ex: ```javascript ... ```)
+        # Pegamos o que está dentro das crases triplas
+        text = re.sub(r"```(?:\w+)?\n?(.*?)```", r"\1", text, flags=re.DOTALL)
 
+        # 3. Remove rótulos de linguagem soltos no início ou meio do texto (como 'javascript' puro)
+        # Isso limpa palavras como 'javascript' ou 'python' que aparecem sozinhas em uma linha
+        languages = ['javascript', 'python', 'typescript', 'java', 'csharp', 'go']
+        for lang in languages:
+            # Remove a palavra se ela estiver sozinha em uma linha (comum em falhas de geração)
+            text = re.sub(rf"^\s*{lang}\s*\$", "", text, flags=re.MULTILINE | re.IGNORECASE)
+            text = re.sub(rf"```{lang}(?:\w+)?\n?(.*?)```", r"\1", text, flags=re.MULTILINE | re.DOTALL)
+            text = text.replace(f"```{lang}", "")
+
+
+        # 4. Limpeza final de crases triplas remanescentes e espaços inúteis
+        text = text.replace("```", "")
+        
         return text.strip()
-    
+        
     def formatar_codigo(self, code: list) -> str:
         """
         Formata uma lista de strings (linhas de código) aplicando uma indentação 
