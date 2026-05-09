@@ -19,7 +19,6 @@ class Documentation:
         
         O cliente é configurado com um tempo limite de 120 segundos para requisições assíncronas.
         """
-        self.client = httpx.AsyncClient(timeout=120)
         self.agent = Agent()  # Instância do agente para chamadas ao MCP
 
         
@@ -42,9 +41,9 @@ class Documentation:
             "javascript": self.agent.gerar_docstring_javascript,
             "go": self.agent.gerar_docstring_go
         }
-        resp = await functions[language](code)
-        result = json.loads(resp.text)
-        result = result.get('result').get('content')[0].get('text')
+        result = await functions[language](code)
+        # result = json.loads(resp.text)
+        # result = result.get('result').get('content')[0].get('text')
         print(f"Resposta bruta da IA: {result}")
         return self.__sanitize_response(result)
     

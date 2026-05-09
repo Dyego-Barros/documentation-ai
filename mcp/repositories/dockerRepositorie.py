@@ -12,7 +12,6 @@ class DockerRepositorie:
     para gerenciar imagens, tags, versões e operações relacionadas a repositórios.
     """
     def __init__(self):
-        self.client = httpx.AsyncClient(timeout=120)
         self.agent = Agent()  # Instância do agente para chamadas ao MCP
 
     async def __call_agent_dockerfile(self, context:dict) -> str:

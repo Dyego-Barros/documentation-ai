@@ -1,0 +1,22 @@
+# Pastas de ambiente e dependências
+.venv/**
+node_modules/**
+
+# Pastas de código que não fazem parte da extensão VS Code diretamente
+api/**
+mcp/**
+
+# Arquivos de configuração e Docker
+.env
+.gitignore
+.python-version
+docker-compose.yaml
+pyproject.toml
+uv.lock
+
+# Arquivos de desenvolvimento e pacotes já gerados
+*.vsix
+package-lock.json
+
+# Se você não usa TypeScript e apenas o extension.js, ignore pastas de projeto se houver
+.vscode/**

@@ -4,25 +4,41 @@ from repositories.dockerRepositorie import DockerRepositorie
 from dtos.dtos import RequestModel, dockerModel, composeModel
 from fastapi import FastAPI
 from fastapi import status
-from typing import Literal
+from fastapi import Depends
+from contextlib import asynccontextmanager
 
 
-doc = Documentation()
-docker = DockerRepositorie()
 mcp = FastMCP("docstring-agent")
-app= FastAPI()
+
 mcp_app = mcp.http_app(
     path="/",
     json_response=True,
     stateless_http=True,
     transport="http"
 )
+
+@asynccontextmanager
+async def lifespan(app):
+    async with mcp.lifespan():
+        yield
+
+app= FastAPI(title="API Tools Extension AI", lifespan=lifespan)
+
+
 app.mount("/mcp", mcp_app)
+
+def get_doc():
+    return  Documentation()
+
+def get_docker():
+    return  DockerRepositorie()
+
+
 
 
     
 @app.post("/languages/docs", status_code=status.HTTP_200_OK)
-async def add_docstring(req:RequestModel) -> dict:
+async def add_docstring(req:RequestModel, doc:Documentation=Depends(get_doc)) -> dict:
     """
     Adiciona docstrings a funções e métodos no código-fonte, de acordo com a linguagem especificada.
 
@@ -54,7 +70,7 @@ async def add_docstring(req:RequestModel) -> dict:
     return {"result": result}
 
 @app.post("/generate/dockerfile", status_code=status.HTTP_200_OK)
-async def generate_dockerfile(req: dockerModel)->dict:
+async def generate_dockerfile(req: dockerModel, docker:DockerRepositorie=Depends(get_docker))->dict:
     
     """
     Gera um Dockerfile com base no contexto fornecido.
@@ -78,7 +94,7 @@ async def generate_dockerfile(req: dockerModel)->dict:
         print(f"Erro ao gerar dockerfile :{e}")
         
 @app.post("/generate/compose", status_code=status.HTTP_200_OK)
-async def generate_compose(req: composeModel)->dict:
+async def generate_compose(req: composeModel, docker:DockerRepositorie=Depends(get_docker))->dict:
     """
     Gera um arquivo docker-compose.yml com base na lista de serviços fornecida.
 
@@ -105,7 +121,8 @@ if __name__ == "__main__":
         "server:app",
         host="0.0.0.0",
         port=8000,
-        reload=False,
-        workers=2
+        reload=False
+        
+       
     )
    
