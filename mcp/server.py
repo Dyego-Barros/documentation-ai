@@ -55,6 +55,7 @@ async def add_docstring(req:RequestModel) -> dict:
 
 @app.post("/generate/dockerfile", status_code=status.HTTP_200_OK)
 async def generate_dockerfile(req: dockerModel)->dict:
+    
     """
     Gera um Dockerfile com base no contexto fornecido.
 
