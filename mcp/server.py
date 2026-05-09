@@ -1,36 +1,28 @@
 from fastmcp import FastMCP
-from agent import *
-from pydantic import BaseModel
-import asyncio
+from repositories.docRepositorie import Documentation
+from repositories.dockerRepositorie import DockerRepositorie
+from dtos.dtos import RequestModel, dockerModel, composeModel
+from fastapi import FastAPI
+from fastapi import status
+from typing import Literal
 
 
+doc = Documentation()
+docker = DockerRepositorie()
 mcp = FastMCP("docstring-agent")
-
-app = mcp.http_app(
-    path="/mcp",
+app= FastAPI()
+mcp_app = mcp.http_app(
+    path="/",
     json_response=True,
     stateless_http=True,
     transport="http"
 )
+app.mount("/mcp", mcp_app)
 
-class dockerModel(BaseModel):
-    """
-    Modelo Pydantic que representa a estrutura de dados para geração de Dockerfile.
+
     
-    Attributes:
-        project_type (str): Tipo do projeto (ex: web, backend, etc).
-        framework (str | None): Framework utilizado no projeto.
-        files (dict): Estrutura de arquivos do projeto.
-    """
-    project_type: str
-    framework: str | None
-    files: dict
-   
-async def run_in_thread(func,*args): 
-    return asyncio.to_thread(func, *args)
-    
-@mcp.tool()
-async def add_docstring(code: str,language:str) -> str:
+@app.post("/languages/docs", status_code=status.HTTP_200_OK)
+async def add_docstring(req:RequestModel) -> dict:
     """
     Adiciona docstrings a funções e métodos no código-fonte, de acordo com a linguagem especificada.
 
@@ -46,21 +38,23 @@ async def add_docstring(code: str,language:str) -> str:
     """
     
     funcs = {
-        "python": gerar_docstring_Python,
-        "csharp": gerar_docstring_csharp,
-        "java": gerar_docstring_java,
-        "javascript": gerar_docstring_javascript,
-        "go": gerar_docstring_go,
+        "python": doc.processar_codigo,
+        "csharp": doc.processar_codigo,
+        "java": doc.processar_codigo,
+        "javascript": doc.processar_codigo,
+        "go": doc.processar_codigo,
     }
-
+    
+    language = req.language.lower()
+    
     if language not in funcs:
         raise ValueError("Linguagem não suportada")
-    result = await funcs[language](code)
+    result = await funcs[language](code=req.code,language=language)
     print(result)
-    return result
+    return {"result": result}
 
-@mcp.tool()
-async def generate_dockerfile(context:dict)->str:
+@app.post("/generate/dockerfile", status_code=status.HTTP_200_OK)
+async def generate_dockerfile(req: dockerModel)->dict:
     """
     Gera um Dockerfile com base no contexto fornecido.
 
@@ -74,16 +68,16 @@ async def generate_dockerfile(context:dict)->str:
         Exception: Se ocorrer um erro durante a geração do Dockerfile.
     """
     try:
-        if context!= None:
+        
             
-            response = await gerar_dockerfile(context)
-            print(f"Resposta da IA: {response}")
-            return response
+        response = await docker.processar_codigo(code=req.model_dump())
+        print(f"Resposta da IA: {response}")
+        return {"result": response}
     except Exception as e:
         print(f"Erro ao gerar dockerfile :{e}")
         
-@mcp.tool()
-async def generate_compose(services:list)->str:
+@app.post("/generate/compose", status_code=status.HTTP_200_OK)
+async def generate_compose(req: composeModel)->dict:
     """
     Gera um arquivo docker-compose.yml com base na lista de serviços fornecida.
 
@@ -97,11 +91,10 @@ async def generate_compose(services:list)->str:
         Exception: Se ocorrer um erro durante a geração do docker-compose.
     """
     try:
-        if services!= None:
-            
-            response = await gerar_compose(services)
+        if len(req.services) > 0:
+            response = await docker.processar_codigo(code=req.services)
             print(f"Resposta da IA: {response}")
-            return response
+            return {"result": response}
     except Exception as e:
         print(f"Erro ao gerar dockerfile :{e}")
 
@@ -110,7 +103,7 @@ if __name__ == "__main__":
     uv.run(
         "server:app",
         host="0.0.0.0",
-        port=9000,
+        port=8000,
         reload=False,
         workers=2
     )
